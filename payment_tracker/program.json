@@ -1,0 +1,6 @@
+{
+    "program": "payment_tracker.aleo",
+    "version": "0.0.0",
+    "description": "Private payment history tracking with Merkle verification",
+    "license": "MIT"
+}

@@ -1,0 +1,6 @@
+{
+    "program": "loan_manager.aleo",
+    "version": "0.0.0",
+    "description": "Undercollateralized lending protocol with ZK credit verification",
+    "license": "MIT"
+}

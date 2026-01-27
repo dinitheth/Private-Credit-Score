@@ -1,0 +1,6 @@
+{
+  "program": "credit_score.aleo",
+  "version": "0.0.0",
+  "description": "Privacy-preserving credit scoring system with ZK range proofs",
+  "license": "MIT"
+}
