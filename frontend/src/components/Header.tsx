@@ -55,6 +55,36 @@ const Header: FC<HeaderProps> = ({ currentView, setCurrentView }) => {
                             >
                                 Apply
                             </a>
+                            <a
+                                href="#"
+                                className={`nav-link ${currentView === 'transactions' ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentView('transactions');
+                                }}
+                            >
+                                Transactions
+                            </a>
+                            <a
+                                href="#"
+                                className={`nav-link ${currentView === 'payments' ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentView('payments');
+                                }}
+                            >
+                                Payments
+                            </a>
+                            <a
+                                href="#"
+                                className={`nav-link ${currentView === 'settings' ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentView('settings');
+                                }}
+                            >
+                                Settings
+                            </a>
                         </>
                     )}
                     <WalletMultiButton />

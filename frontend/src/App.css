@@ -10,13 +10,14 @@
 }
 
 .header {
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
+    background: rgba(21, 27, 46, 0.8);
+    border-bottom: 1px solid var(--border-light);
     padding: var(--spacing-lg) 0;
     position: sticky;
     top: 0;
     z-index: 100;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .header-content {
@@ -36,14 +37,20 @@
 }
 
 .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    width: 36px;
+    height: 36px;
+    background: var(--gradient-primary);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
+    box-shadow: var(--shadow-glow-secondary);
+    transition: transform 0.3s ease;
+}
+
+.logo:hover .logo-icon {
+    transform: scale(1.05) rotate(5deg);
 }
 
 .nav {
@@ -56,18 +63,40 @@
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.2s ease;
+    transition: all 0.3s ease;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
+    position: relative;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--gradient-primary);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
 }
 
 .nav-link:hover {
     color: var(--text-primary);
-    background: var(--bg-hover);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.nav-link:hover::after {
+    width: 80%;
 }
 
 .nav-link.active {
-    color: var(--primary);
+    color: var(--primary-light);
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.nav-link.active::after {
+    width: 80%;
 }
 
 .dashboard-grid {
@@ -130,4 +159,42 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Wallet error banner */
+.wallet-error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.15));
+    border-bottom: 1px solid rgba(239, 68, 68, 0.4);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.wallet-error-banner span {
+    flex: 1;
+}
+
+.wallet-error-dismiss {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.wallet-error-dismiss:hover {
+    background: rgba(255, 255, 255, 0.2);
 }

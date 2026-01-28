@@ -1,6 +1,8 @@
 import { FC, useState } from 'react';
+import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { TrendingUp, Eye, EyeOff, Shield, CheckCircle } from 'lucide-react';
-import { CREDIT_TIERS, CREDIT_SCORE_DEFAULT } from '../utils/constants';
+import { CREDIT_TIERS } from '../utils/constants';
+import { requestDecryption } from '../utils/aleo';
 
 interface CreditScoreCardProps {
     score?: number;
@@ -11,19 +13,25 @@ interface CreditScoreCardProps {
 }
 
 const CreditScoreCard: FC<CreditScoreCardProps> = ({
-    score = CREDIT_SCORE_DEFAULT,
-    paymentCount = 0,
-    onTimePayments = 0,
-    latePayments = 0,
-    defaults = 0,
+    score,
+    paymentCount,
+    onTimePayments,
+    latePayments,
+    defaults,
 }) => {
+    const wallet = useWallet();
     const [showScore, setShowScore] = useState(true);
+    const [isDecrypting, setIsDecrypting] = useState(false);
 
-    // Find credit tier
-    const tier = CREDIT_TIERS.find(t => score >= t.min && score <= t.max) || CREDIT_TIERS[CREDIT_TIERS.length - 1];
+    // Find credit tier - only if we have a real score
+    const tier = (score !== undefined && score !== null) 
+        ? (CREDIT_TIERS.find(t => score >= t.min && score <= t.max) || CREDIT_TIERS[CREDIT_TIERS.length - 1])
+        : null;
 
-    // Calculate on-time percentage
-    const onTimePercentage = paymentCount > 0 ? Math.round((onTimePayments / paymentCount) * 100) : 0;
+    // Calculate on-time percentage - only if we have real data
+    const onTimePercentage = (paymentCount !== undefined && paymentCount !== null && paymentCount > 0 && onTimePayments !== undefined)
+        ? Math.round((onTimePayments / paymentCount) * 100)
+        : null;
 
     return (
         <div className="card" style={{ background: `linear-gradient(135deg, var(--bg-card), ${tier.color}15)` }}>
@@ -49,26 +57,70 @@ const CreditScoreCard: FC<CreditScoreCardProps> = ({
 
             {/* Score Display */}
             <div style={{ textAlign: 'center', margin: 'var(--spacing-xl) 0' }}>
-                {showScore ? (
+                {score === undefined || score === null ? (
+                    <div style={{ padding: 'var(--spacing-xl)', color: 'var(--text-muted)' }}>
+                        <Shield size={48} style={{ opacity: 0.3 }} />
+                        <p style={{ marginTop: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>Decrypt record to view score</p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={async () => {
+                                setIsDecrypting(true);
+                                try {
+                                    const success = await requestDecryption(wallet);
+                                    if (success) {
+                                        // Refresh page to reload decrypted data
+                                        window.location.reload();
+                                    }
+                                } finally {
+                                    setIsDecrypting(false);
+                                }
+                            }}
+                            disabled={isDecrypting || !wallet.connected}
+                            style={{ marginTop: 'var(--spacing-md)', width: '100%' }}
+                        >
+                            {isDecrypting ? 'Requesting Permission...' : 'Decrypt My Credit Score'}
+                        </button>
+                        <div style={{ 
+                            padding: 'var(--spacing-md)', 
+                            background: 'rgba(99, 102, 241, 0.1)', 
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: '0.875rem',
+                            textAlign: 'left',
+                            marginTop: 'var(--spacing-md)'
+                        }}>
+                            <strong>What does "Decrypt record to view" mean?</strong>
+                            <p style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.75rem', opacity: 0.9 }}>
+                                Your credit data is <strong>encrypted on the blockchain</strong> for privacy. Only you can decrypt it with your wallet.
+                            </p>
+                            <p style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.75rem', opacity: 0.9 }}>
+                                <strong>How to decrypt:</strong> Click the button above. Your <strong>Leo Wallet</strong> will show a popup asking for permission. Click <strong>"Approve"</strong> in the wallet popup to decrypt and view your score.
+                            </p>
+                        </div>
+                    </div>
+                ) : showScore ? (
                     <>
-                        <div style={{
-                            fontSize: '4rem',
-                            fontWeight: 'bold',
-                            background: `linear-gradient(135deg, ${tier.color}, white)`,
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            marginBottom: 'var(--spacing-sm)'
-                        }}>
-                            {score}
-                        </div>
-                        <div className="badge" style={{
-                            background: `${tier.color}20`,
-                            color: tier.color,
-                            border: `1px solid ${tier.color}`,
-                            fontSize: '1rem'
-                        }}>
-                            {tier.label}
-                        </div>
+                        {tier && (
+                            <>
+                                <div style={{
+                                    fontSize: '4rem',
+                                    fontWeight: 'bold',
+                                    background: `linear-gradient(135deg, ${tier.color}, white)`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    marginBottom: 'var(--spacing-sm)'
+                                }}>
+                                    {score}
+                                </div>
+                                <div className="badge" style={{
+                                    background: `${tier.color}20`,
+                                    color: tier.color,
+                                    border: `1px solid ${tier.color}`,
+                                    fontSize: '1rem'
+                                }}>
+                                    {tier.label}
+                                </div>
+                            </>
+                        )}
                     </>
                 ) : (
                     <div style={{ padding: 'var(--spacing-xl)', color: 'var(--text-muted)' }}>
@@ -92,7 +144,7 @@ const CreditScoreCard: FC<CreditScoreCardProps> = ({
                         Total Payments
                     </div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-                        {paymentCount}
+                        {paymentCount !== undefined && paymentCount !== null ? paymentCount : '-'}
                     </div>
                 </div>
 
@@ -101,8 +153,12 @@ const CreditScoreCard: FC<CreditScoreCardProps> = ({
                         On-Time Rate
                     </div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
-                        {onTimePercentage}%
-                        {onTimePercentage > 90 && <CheckCircle size={20} />}
+                        {onTimePercentage !== null ? (
+                            <>
+                                {onTimePercentage}%
+                                {onTimePercentage > 90 && <CheckCircle size={20} />}
+                            </>
+                        ) : '-'}
                     </div>
                 </div>
 
@@ -110,8 +166,8 @@ const CreditScoreCard: FC<CreditScoreCardProps> = ({
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--spacing-xs)' }}>
                         Collateral Ratio
                     </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: tier.color }}>
-                        {tier.collateral}%
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: tier?.color || 'var(--text-muted)' }}>
+                        {tier ? `${tier.collateral}%` : '-'}
                     </div>
                 </div>
 
@@ -119,8 +175,8 @@ const CreditScoreCard: FC<CreditScoreCardProps> = ({
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--spacing-xs)' }}>
                         Defaults
                     </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: defaults > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                        {defaults}
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: (defaults !== undefined && defaults !== null && defaults > 0) ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                        {defaults !== undefined && defaults !== null ? defaults : '-'}
                     </div>
                 </div>
             </div>
