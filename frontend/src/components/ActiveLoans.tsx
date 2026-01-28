@@ -1,8 +1,8 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { useWallet } from '@demox-labs/aleo-wallet-adapter-react';
 import { FileText, DollarSign, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
 import { LOAN_STATUS } from '../utils/constants';
-import { getActiveLoans, makePayment } from '../utils/aleo';
+import { getActiveLoans, makePayment, decryptLoanRecord, clearRecordsCache } from '../utils/aleo';
 
 interface Loan {
     id: string;
@@ -13,6 +13,8 @@ interface Loan {
     status: number;
     paymentsMade: number;
     termBlocks: number;
+    interestRate: number;
+    record?: any; // Store the encrypted record for transactions
 }
 
 const ActiveLoans: FC = () => {
@@ -53,21 +55,32 @@ const ActiveLoans: FC = () => {
             console.log('Making payment on blockchain:', { loanId, amount: paymentAmount });
 
             // Find the loan record
-            const loanRecord = loans.find(l => l.id === loanId);
-            if (!loanRecord) {
-                console.error('Loan record not found');
+            const loan = loans.find(l => l.id === loanId);
+            if (!loan) {
+                console.error('Loan not found');
                 return;
             }
 
-            // Submit payment to blockchain
-            const result = await makePayment(wallet, loanRecord as any, paymentAmount);
+            if (!loan.record) {
+                console.error('Loan record not available - cannot make payment');
+                return;
+            }
+
+            // Submit payment to blockchain using the encrypted record
+            const result = await makePayment(wallet, loan.record, paymentAmount);
             console.log('Payment successful:', result);
 
-            // Refresh loans after successful payment
-            await fetchLoans();
-            setSelectedLoan(null);
-        } catch (error) {
+            // Clear cache and refresh loans after successful payment
+            clearRecordsCache();
+            
+            // Wait a moment for transaction to finalize, then refresh
+            setTimeout(async () => {
+                await fetchLoans();
+                setSelectedLoan(null);
+            }, 5000);
+        } catch (error: any) {
             console.error('Error making payment:', error);
+            alert(`Payment failed: ${error?.message || 'Unknown error'}`);
         } finally {
             setIsProcessingPayment(false);
         }
@@ -154,7 +167,9 @@ const ActiveLoans: FC = () => {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--spacing-xs)' }}>
                                     <DollarSign size={12} style={{ display: 'inline' }} /> Principal
                                 </div>
-                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>{loan.principal}</div>
+                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
+                                    {loan.principal > 0 ? `${loan.principal.toFixed(2)} Credits` : 'Decrypt to view'}
+                                </div>
                             </div>
 
                             <div>
@@ -162,7 +177,7 @@ const ActiveLoans: FC = () => {
                                     <TrendingUp size={12} style={{ display: 'inline' }} /> Remaining
                                 </div>
                                 <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: 'var(--warning)' }}>
-                                    {loan.remainingBalance}
+                                    {loan.remainingBalance > 0 ? `${loan.remainingBalance.toFixed(2)} Credits` : 'Decrypt to view'}
                                 </div>
                             </div>
 
@@ -171,7 +186,7 @@ const ActiveLoans: FC = () => {
                                     Collateral
                                 </div>
                                 <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: 'var(--secondary)' }}>
-                                    {loan.collateral}
+                                    {loan.collateral > 0 ? `${loan.collateral.toFixed(2)} Credits` : 'Decrypt to view'}
                                 </div>
                             </div>
 
@@ -180,7 +195,7 @@ const ActiveLoans: FC = () => {
                                     <Calendar size={12} style={{ display: 'inline' }} /> Payments Made
                                 </div>
                                 <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-                                    {loan.paymentsMade}/12
+                                    {loan.paymentsMade !== undefined ? `${loan.paymentsMade}` : '-'}
                                 </div>
                             </div>
                         </div>
@@ -225,8 +240,8 @@ const ActiveLoans: FC = () => {
                                     {isProcessingPayment ? 'Processing Payment...' : `Pay ${paymentAmount} Credits`}
                                 </button>
 
-                                {/* Warning for overdue */}
-                                {loan.nextPaymentDue < Date.now() && (
+                                {/* Warning for overdue - only show if we have valid payment due date */}
+                                {loan.nextPaymentDue > 0 && loan.nextPaymentDue < Math.floor(Date.now() / 1000) && (
                                     <div style={{
                                         marginTop: 'var(--spacing-sm)',
                                         padding: 'var(--spacing-sm)',
@@ -237,6 +252,21 @@ const ActiveLoans: FC = () => {
                                     }}>
                                         <AlertTriangle size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
                                         Payment overdue - this may affect your credit score
+                                    </div>
+                                )}
+                                
+                                {/* Warning if loan data not decrypted */}
+                                {loan.principal === 0 && loan.remainingBalance === 0 && (
+                                    <div style={{
+                                        marginTop: 'var(--spacing-sm)',
+                                        padding: 'var(--spacing-sm)',
+                                        background: 'rgba(245, 158, 11, 0.1)',
+                                        border: '1px solid var(--warning)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        fontSize: '0.75rem',
+                                    }}>
+                                        <AlertTriangle size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
+                                        Loan data not decrypted. Approve decryption in wallet to view details.
                                     </div>
                                 )}
                             </div>
